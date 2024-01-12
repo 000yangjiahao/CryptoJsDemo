@@ -6,6 +6,7 @@ const FileTab = (props) => {
     const [inputFile, setInputFile] = useState(null);
     const [outputFile, setOutputFile] = useState(null);
     const [downloadURL, setDownloadURL] = useState('');
+    const [encURL, setEncURL] = useState('')
     const [processTime, setProcessTime] = useState(0);
     const [show, setShow] = useState(false);
 
@@ -16,6 +17,15 @@ const FileTab = (props) => {
         }
     };
 
+    async function handleDecFileInputChange(event){
+        const file = event.target.files[0];
+        const fileContent = await readFileContent(file);
+        if(fileContent){
+            setInputFile(file);
+            setOutputFile(fileContent)
+        }
+    }
+
     const handleEncryptFile = async () => {
         if (inputFile) {
             setShow(false);
@@ -24,7 +34,10 @@ const FileTab = (props) => {
             const fileContent = await readFileContent(inputFile);
             const wordBuffer = ArrayBufferToWordArray(fileContent);
             const encData = AESEncData(wordBuffer, props.cryptoKey, props.iv);
-
+            const mimeType = getFileMimeType(inputFile);
+            const blob = new Blob([encData], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            setEncURL(url)
             setOutputFile(encData);
 
             const endTime = performance.now();
@@ -85,9 +98,16 @@ const FileTab = (props) => {
     };
 
     const AESEncData = (data, key, iv) => { // 这里的data是WordBuffer类型的数据
+        console.log(data);
+        // const encrypt = CryptoJS.AES.encrypt(data, key, { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
         const encrypt = CryptoJS.AES.encrypt(data, key, { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
+        console.log(encrypt.ciphertext);
+        const last16Bytes = encrypt.ciphertext.words.slice(-4);
+        const hexLast16Bytes = last16Bytes.map(e => e.toString(2));
+        console.log("Hex representation of last 16 bytes:", hexLast16Bytes);
         const arrayBuffer = WordArrayToArrayBuffer(encrypt.ciphertext);
         return arrayBuffer;
+        // return encrypt.ciphertext
     }
 
     const AESDecData = (data, key, iv) => { // 这里的data是WordBuffer类型的数据
@@ -99,11 +119,9 @@ const FileTab = (props) => {
     }
 
     const getFileMimeType = (file) => {
-        // Extract file extension
         const fileNameParts = file.name.split('.');
         const fileExtension = fileNameParts[fileNameParts.length - 1];
 
-        // Map file extensions to MIME types as needed
         switch (fileExtension) {
             case 'doc':
             case 'docx':
@@ -126,7 +144,12 @@ const FileTab = (props) => {
 
     return (
         <div>
-            <input type="file" onChange={handleFileInputChange} />
+            <div>
+            <span>需要加密的文件</span>
+            <input type="file" onChange={handleFileInputChange} style={{ marginLeft: '5px' }} />
+            <span>需要解密的文件</span>
+            <input type="file" onChange={handleDecFileInputChange} style={{ marginLeft: '5px' }} />
+            </div>
             <br />
             <Button onClick={handleEncryptFile} style={{ marginTop: 10 }}>
                 加密
@@ -136,6 +159,11 @@ const FileTab = (props) => {
             </Button>
             <br />
             <p>处理时间: {processTime} 毫秒</p>
+            {encURL && (
+                <a href={encURL} download="enc_file">
+                    下载加密后的文件
+                </a>
+            )}
             {show && outputFile && (
                 <div>
                     <h3>加密或解密后</h3>

@@ -67,7 +67,6 @@ export default function StringTab(props) {
             <TextArea
                 value={outputValue}
                 placeholder="加密或解密后的内容将在这里显示"
-                //readOnly
                 style={{ width: 1200, minHeight: 250, marginTop: 10 }}
             />
             <Progress percent={progressPercent} status="active" style={{ marginTop: 10 }} />
